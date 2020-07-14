@@ -1,4 +1,4 @@
-""" Script for downloading USPTO patent application data and extracting titles, abstracts, descriptions, claims, assignee countries, and 
+""" Script for downloading USPTO patent application data and extracting titles, abstracts, descriptions, claims, assignee countries, and
 application and publication dates.
 """
 
@@ -7,13 +7,10 @@ from bs4 import BeautifulSoup
 import requests
 import urllib
 import os
-import sys
 import pickle
 import datetime
-import re
 import pdb
 import glob
-import numpy as np
 import gzip
 from random import randint
 from time import sleep
@@ -137,7 +134,7 @@ def parse_xml(filename):
                     claimsdict[applID] = claims
                     countrydict[applID] = ctry
                     applicationdatedict[applID] = adate
-                    publicationdatedict[applID] = pdate                    
+                    publicationdatedict[applID] = pdate
                 xmlblock = ""
                 xmlopen = False
             xmlopen = True
@@ -153,7 +150,7 @@ def parse_xml(filename):
         claimsdict[applID] = claims
         countrydict[applID] = ctry
         applicationdatedict[applID] = adate
-        publicationdatedict[applID] = pdate                    
+        publicationdatedict[applID] = pdate
     rfile.close()
     return abstractdict, titledict, descriptiondict, claimsdict, countrydict, applicationdatedict, publicationdatedict
 
@@ -172,8 +169,8 @@ def get_urls_year(year):
             urls.append(full_url)
             names.append(fname)
     return urls, names
-    
-    
+
+
 def pickle_record(cname, abstract_dict, title_dict, descr_dict, claims_dict, df):                # TODO: Add saving text and claims dict
     """Function for saving parsed data"""
 
@@ -184,7 +181,7 @@ def pickle_record(cname, abstract_dict, title_dict, descr_dict, claims_dict, df)
     gzpickle_filename_description = cname[:dir_end] + "descriptions/descriptions_" + cname[dir_end:-4] + ".pkl.gz"
     gzpickle_filename_claims = cname[:dir_end] + "claims/claims_" + cname[dir_end:-4] + ".pkl.gz"
     gzpickle_filename_df = cname[:dir_end] + "df/df_" + cname[dir_end:-4] + ".pkl.gz"
-    
+
     """pickle dicts and save"""
     for to_be_pickled, gzpickle_filename in [(abstract_dict, gzpickle_filename_abstract), \
                                            (title_dict, gzpickle_filename_title), \
@@ -202,29 +199,29 @@ def pickle_record(cname, abstract_dict, title_dict, descr_dict, claims_dict, df)
         # To reload, do:
         #with gzip.GzipFile(gzpickle_filename, 'r') as gzf:
         #    reloaded = pickle.load(gzf)
-    
+
     """pickle pandas and save"""
     df.to_pickle(gzpickle_filename_df, compression="gzip")
 
-def download_year(year, start=None, raw_file_directory="/mnt/usb4/patentapplications/raw_data/", extract_parse=True, reparse=False, 
+def download_year(year, start=None, raw_file_directory="/mnt/usb4/patentapplications/raw_data/", extract_parse=True, reparse=False,
                                                                 work_directory="/mnt/usb4/patentapplications/"):
     """Function for downloading and parsing data by year"""
-    
+
     os.chdir(work_directory)
-    
-    urls, names = get_urls_year(year) 
+
+    urls, names = get_urls_year(year)
 
     if start is not None:
-        nameidx = names.index(start)    
+        nameidx = names.index(start)
         names = names[nameidx:]
         urls = urls[nameidx:]
 
     for i, url in enumerate(urls):
         name = names[i]
         print("    Parsing item {0:2d}: {1:s}".format(i, name)
-        
+
         was_downloaded = False
-        
+
         if not os.path_exists("{1:s}/{0:s}".format(raw_file_directory,name)):
             print("        Item not present locally. Downloading.")
             print("        Fetching and parsing item {0:2d}: {1:s}".format(i, url))
@@ -233,10 +230,10 @@ def download_year(year, start=None, raw_file_directory="/mnt/usb4/patentapplicat
             was_downloaded = True
         if extract_parse and (was_downloaded or reparse):
             extract_parse(name, raw_file_directory)
-        
-def extract_parse(name, raw_file_directory):        
+
+def extract_parse(name, raw_file_directory):
     """Function for extracting a single patent application record file and calling the parser for it."""
-    
+
     with ZipFile(name, 'r') as zip:
         files_extracted = zip.namelist()
         try:
@@ -251,7 +248,7 @@ def extract_parse(name, raw_file_directory):
     df1 = pd.DataFrame.from_dict(applicationdatedict, orient="index", columns=["Publication Date"])
     df3 = pd.DataFrame.from_dict(applicationdatedict, orient="index", columns=["Assignee Country"])
     df = pd.concat([df1, df2, df3], axis=1)
-    
+
     pdb.set_trace()
 
     # rm extracted file
@@ -260,10 +257,10 @@ def extract_parse(name, raw_file_directory):
 
     # save pickle
     pickle_record(name, abstract_dict, title_dict, description_dict, claims_dict, df)
-        
+
 def reread_files(raw_file_directory="/mnt/usb4/patentapplications/raw_data", work_directory="/mnt/usb4/patentapplications/raw_data/work/"):
     """Function for collecting filenames of already downloaded raw files and ralling extractor/parser again."""
-    
+
     files = glob.glob("{0:s}/*.zip".format(raw_file_directory))
     names = [f.split("/")[-1] for f in files]
     os.chdir(work_directory)
@@ -272,28 +269,28 @@ def reread_files(raw_file_directory="/mnt/usb4/patentapplications/raw_data", wor
 
 # main entry point
 if __name__ == "__main__":
-    
+
     """Define years and file to start with. list(range(2001, 2019)) and start=None is all files all years
-        Years starting 2015 have version 4.4 and are consistent. 
+        Years starting 2015 have version 4.4 and are consistent.
         If possible we should stick to years 2015+."""
     years = [2020]
     start = None
-    
+
     """Different example: several years, starting with a particular file in the first year:"""
     #years = list(range(2016, 2019))
     #start = "ipg160830.zip"
-    
+
     """Different example: downloading off. Would still reread existing files"""
     years = []        # downloading off
-    
+
     """Already downloaded files can be reread by calling reread_files()"""
     #reread_files()
-    
+
     """Download, parse, and save"""
     for year in years:
         print("Commencing year {0:d}".format(year))
         download_year(str(year), start=start)
-        
+
     """To just test the parse_file() function with a single file"""
     #files_extracted = ["ipg0200714.xml"]
     #abstract_dict, title_dict, description_dict, claims_dict = parse_xml(files_extracted[0])
