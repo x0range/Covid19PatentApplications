@@ -7,7 +7,7 @@ verify_ssl = true
 
 [packages]
 beautifulsoup4 = "*"
-src = {editable = true,path = "."}
+src = {editable = true,path = "src"}
 requests = "*"
 tqdm = "*"
 pandas = "*"

@@ -12,7 +12,7 @@ from zipfile import ZipFile
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from settings import DATA_DIR
-from src import utils
+import utils
 
 
 def main():

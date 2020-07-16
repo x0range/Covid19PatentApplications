@@ -8,10 +8,10 @@ from random import randint
 from time import sleep
 
 from settings import DATA_DIR
-from src import utils
+import utils
 from urllib.parse import urljoin
 
-from src.utils import get_headers
+from utils import get_headers
 
 uspto_base_url = "https://bulkdata.uspto.gov/data/patent/application/redbook/fulltext/"
 
