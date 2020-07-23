@@ -51,7 +51,7 @@ def get_description(soup: BeautifulSoup, file_name: str, application_id: str):
 def get_claims(soup: BeautifulSoup, file_name: str, application_id: str):
     """Function for extracting claims from xml soup"""
     try:
-        cl = soup.find("us-patent-application").find("claims").text
+        cl = soup.find("claims").text
     except Exception as e:
         cl = None
         logging.error(f'Could not extract claims from {application_id} in {file_name}: {e}.')
