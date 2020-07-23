@@ -22,7 +22,8 @@ def main():
         lines = extract(file_name)
         patents = parse_xml(lines, file_name)
         df = pd.DataFrame.from_records(patents)
-        df.to_pickle(os.path.join(DATA_DIR, 'processed', file_name+'_patents.pkl.gz'), compression="gzip")
+        file_name_without_path = file_name.split(os.sep)[-1]
+        df.to_pickle(os.path.join(DATA_DIR, 'processed', file_name_without_path + '_patents.pkl.gz'), compression="gzip")
 
 
 def get_downloaded_zip_files(directory=os.path.join(DATA_DIR, 'raw')):
