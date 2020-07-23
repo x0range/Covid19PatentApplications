@@ -70,6 +70,9 @@ def parse_xml(content, file_name):
             xml_block += line_str
 
     patents.append(parse_single_patent(xml_block, file_name))
+    
+    patents = [p for p in patents if p['application_id'] is not None]
+    
     return patents
 
 
