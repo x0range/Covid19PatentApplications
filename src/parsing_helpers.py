@@ -39,6 +39,10 @@ def get_description(soup: BeautifulSoup, file_name: str, application_id: str):
         d = soup.find("us-patent-application").find("description")
         # TODO: remove UTF8 codes (&#x2019; etc)                    # automatically
         # TODO: remove MATHS->math, table-> table, figref??         # Done
+        if d is None:
+            d = soup.find("description")
+        if d is None:
+            assert False, "No description present"
         # d = ???
         _ = [tag.extract() for tag in d(['table', 'maths'])]  # Cannot deal with '?in-line-formulae'
         d = d.text
