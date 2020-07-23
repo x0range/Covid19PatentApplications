@@ -337,5 +337,5 @@ class OptimizeNLP():
 if __name__ == "__main__":
     codes = ["*.pkl.gz"]
     for code in codes:
-        ONLP = OptimizeNLP(code, path_prefix="./data/processed")
+        ONLP = OptimizeNLP(code, path_prefix="../data/processed")
         ONLP.main()
