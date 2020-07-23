@@ -21,6 +21,7 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import gzip
+import glob
 
 import gensim
 from gensim.utils import simple_preprocess
@@ -51,15 +52,21 @@ class LDACustomScore(LatentDirichletAllocation):
         return (-1) * perplexity_score
 
 class OptimizeNLP():
-    def __init__(self, filenames):
+    def __init__(self, filenames, path_prefix):
         """ Constructor
             Records corpus filename/file location code and parameters.
             Arguments:
-                filenames - list of string (corpus filenames)
+                filenames - string or list of string (search pattern for corpus filenames or list of corpus filenames)
+                path_prefix - string (path of corpus files)
             Returns class instance. """
         
         """ Corpus filenames"""
-        self.filenames = filenames
+        if isinstance(filenames, list):
+            self.filenames = filenames
+        else:
+            assert isinstance(filenames, str)
+            self.filenames = glob.glob("{0:s}{1:s}{2:s}".format(path_prefix, os.sep, filenames))
+        self.path_prefix = path_prefix
         
         """ Define parameters"""
         
@@ -79,10 +86,9 @@ class OptimizeNLP():
         self.TOPIC_WORD_THRESHOLD = 0.6 #0.4
         
         
-    def read_corpus(self, filenames, path_prefix="/mnt/usb4/patentapplications"):
+    def read_corpus(self, filenames):
         """ Function to read and prepare corpus and dates etc.
             Arguments:
-                path_prefix - string
                 filenames - list of strings 
             Returns tuple with 4 elements:
                         - corpus as list of strings
@@ -91,51 +97,40 @@ class OptimizeNLP():
                         - DateTime timestamps corresponding to each document in corpus"""
         """ Read file""" 
         corpus = {}
+        df = None
         for filename in filenames:
-            # TODO: refactor to remove repetition
-            if os.path_exists("{1:s}/titles/titles_{0:s}".format(filename, path_prefix)):
-                filename_gz = "{1:s}/titles/titles_{0:s}".format(filename, path_prefix)
-                with gzip.GzipFile(filename_gz, "r") as infile:
-                    # TODO: assert that there is no overlap
-                    corpus_new_entries = pickle.load(infile)
-                    corpus.update(corpus_new_entries)
-            if os.path_exists("{1:s}/abstracts/abstracts_{0:s}".format(filename, path_prefix)):
-                filename_gz = "{1:s}/abstracts/abstracts_{0:s}".format(filename, path_prefix)
-                with gzip.GzipFile(filename_gz, "r") as infile:
-                    abstracts = pickle.load(infile)
-                for key in abstracts.keys():
-                    if key in corpus:
-                        corpus[key] = corpus[key] + " \n\n\n" + abstracts[key]
-                    else:
-                        corpus[key] = abstracts[key]
-            if os.path_exists("{1:s}/descriptions/descriptions_{0:s}".format(filename, path_prefix)):
-                filename_gz = "{1:s}/descriptions/descriptions_{0:s}".format(filename, path_prefix)
-                with gzip.GzipFile(filename_gz, "r") as infile:
-                    descriptions = pickle.load(infile)
-                for key in descriptions.keys():
-                    if key in corpus:
-                        corpus[key] = corpus[key] + " \n\n\n" + descriptions[key]
-                    else:
-                        corpus[key] = descriptions[key]
-            if os.path_exists("{1:s}/claims/claims_{0:s}".format(filename, path_prefix)):
-                filename_gz = "{1:s}/claims/claims_{0:s}".format(filename, path_prefix)
-                with gzip.GzipFile(filename_gz, "r") as infile:
-                    claims = pickle.load(infile)
-                for key in claims.keys():
-                    if key in corpus:
-                        corpus[key] = corpus[key] + " \n\n\n" + claims[key]
-                    else:
-                        corpus[key] = claims[key]
-            if os.path_exists("{1:s}/df/df_{0:s}".format(filename, path_prefix)):
-                filename_gz = "{1:s}/df/df_{0:s}".format(filename, path_prefix)
-                df_new_entries = pd.read_pickle(filename_gz, compression="gzip")        
-                df = pd.concat(df, df_new_entries)
+            if os.path.exists(filename):
+                df_new_entries = pd.read_pickle(filename, compression="gzip")        
+                if df is None:
+                    df = df_new_entries
+                else:
+                    df = pd.concat([df, df_new_entries])
         
-        df.sort_index(inplace=True)
-        corpus = [corpus[dID] for dID in df.index]
-        pydatetimes = df["Application date"].dt.to_pydatetime()
+        """ Transform dates to standard format"""
+        df["application_date"] = pd.to_datetime(df["application_date"], format="%Y%m%d")
+        df["publication_date"] = pd.to_datetime(df["publication_date"], format="%Y%m%d")
+        
+        """ Sort by date"""
+        df.sort_values(by=["application_date"], inplace=True)
+        
+        """ Reindex to application ID"""
+        df.set_index("application_id", inplace=True)
+        
+        """ Join and extract corpus. This operation will require twice as much memory as the df since it 
+                  copies most columns."""
+        """ TODO: .astype(str) is included to avoid errors from addition with np.nan. It will translate 
+                  np.nan to "nan" however. So a cleaner way would be to replace np.nan by "" manually"""
+        df["corpus"] = df["title"].astype(str) + "\n\n" + df["abstract"].astype(str) +  "\n\n" + \
+                                    df["description"].astype(str) +  "\n\n" + df["claims"].astype(str)
+        df.drop(["title", "abstract", "description", "claims"], axis=1, inplace=True)
+        
+        corpus = list(df["corpus"])
         NO_DOCUMENTS = len(corpus)    
-        #pdb.set_trace()
+        
+        df.drop(["corpus"], axis=1, inplace=True)        
+        
+        """ Extract datetimes"""
+        pydatetimes = df["application_date"].dt.to_pydatetime()
         return corpus, NO_DOCUMENTS, df, pydatetimes
         
     def english_lemmatizing_stemming(self, text):
@@ -293,13 +288,16 @@ class OptimizeNLP():
             freqlists.append(freqlist)
         return wordlists, freqlists
 
-    def pickle_all(self, code="F01N13_009", **kwargs):
+    def pickle_all(self, code="*", **kwargs):
         """ Function to pickle list of objects. Combines all optional arguments to dict which 
             is then pickled and saved.
             Arguments:
                 code - string (code to be included in output filename)
                 ** additional optional arguments to be included.
             Returns None"""
+        if isinstance(code, list):
+            code = "_".join(code)
+        code = code.replace("*", "").replace(os.sep, "")
         with open("lda_result_" + code + ".pkl", "bw") as wfile:
             pickle.dump(kwargs, wfile, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -337,10 +335,7 @@ class OptimizeNLP():
 """ Main entry point"""
 
 if __name__ == "__main__":
-    #codes = ["F01N13_009", "C02F9_00", "F02B3_06", "Y02T10_22", "Y02T10_47"]
-    #codes = ["Y02T10_47"]
-    #codes = ["corpus"]
-    codes = ["corpus_all"]
+    codes = ["*.pkl.gz"]
     for code in codes:
-        ONLP = OptimizeNLP(code)
+        ONLP = OptimizeNLP(code, path_prefix="./data/processed")
         ONLP.main()
