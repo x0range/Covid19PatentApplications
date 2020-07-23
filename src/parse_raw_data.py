@@ -87,13 +87,13 @@ def parse_single_patent(xml_block: str, file_name: str):
 
     patent['application_id'] = get_application_id(soup, file_name)
     if patent['application_id'] is not None:
-        patent['abstract'] = get_abstract(soup, file_name)
-        patent['title'] = get_title(soup, file_name)
-        patent['description'] = get_description(soup, file_name)
-        patent['claims'] = get_claims(soup, file_name)
-        patent['publication_date'] = get_publication_date(soup, file_name)
-        patent['application_date'] = get_application_date(soup, file_name)
-        patent['country'] = get_country(soup, file_name)
+        patent['abstract'] = get_abstract(soup, file_name, patent['application_id'])
+        patent['title'] = get_title(soup, file_name, patent['application_id'])
+        patent['description'] = get_description(soup, file_name, patent['application_id'])
+        patent['claims'] = get_claims(soup, file_name, patent['application_id'])
+        patent['publication_date'] = get_publication_date(soup, file_name, patent['application_id'])
+        patent['application_date'] = get_application_date(soup, file_name, patent['application_id'])
+        patent['country'] = get_country(soup, file_name, patent['application_id'])
 
     return patent
 
