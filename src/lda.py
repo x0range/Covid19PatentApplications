@@ -314,7 +314,7 @@ class OptimizeNLP():
             Returns None"""
         if isinstance(code, list):
             code = "_".join(code)
-        code = code.replace("*", "").replace(os.sep, "")
+        code = code.replace("*", "").replace(os.sep, "").replace(".", "_")
         with open("lda_result_" + code + ".pkl", "bw") as wfile:
             pickle.dump(kwargs, wfile, protocol=pickle.HIGHEST_PROTOCOL)
 
