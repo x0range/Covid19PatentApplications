@@ -52,7 +52,7 @@ class LDACustomScore(LatentDirichletAllocation):
         return (-1) * perplexity_score
 
 class OptimizeNLP():
-    def __init__(self, filenames, path_prefix):
+    def __init__(self, filenames, path_prefix, n_topics=None):
         """ Constructor
             Records corpus filename/file location code and parameters.
             Arguments:
@@ -79,7 +79,12 @@ class OptimizeNLP():
         """search_params - dict or None (parameter values over which the LDA model is to be optimized with GridSearchCV)"""
         #self.search_params = {'n_components': [4, 6, 30], 'learning_decay': [.4, .7, .9], 'learning_offset': [5., 10., 20.]}
         #self.search_params = {'n_components': [2,3,4,5,6,7,8,9,10]} #, 'learning_decay': [.5, .7, .9], 'learning_offset': [5., 10., 20.]}
-        self.search_params = {'n_components': [10, 30, 50, 75, 100, 150, 200, 300, 500]}     # wide search
+        if n_topics is None:
+            self.search_params = {'n_components': [10, 30, 50, 75, 100, 150, 200, 300, 500]}     # wide search
+        elif isinstance(n_topics, int):
+            self.search_params = {'n_components': [n_topics]}     # no search
+        else:
+            assert False, "n_topics must be None or int but was: {0:s}".format(n_topics)
         
         """TOPIC_WORD_THRESHOLD -  float (Threshold for removal of topic words (words that are present 
                                                 in this share of documents are removed)"""
@@ -387,5 +392,5 @@ class OptimizeNLP():
 if __name__ == "__main__":
     codes = ["*.pkl.gz"]
     for code in codes:
-        ONLP = OptimizeNLP(code, path_prefix="../data/processed")
+        ONLP = OptimizeNLP(code, path_prefix="../data/processed", n_topics=12)
         ONLP.main()
