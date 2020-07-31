@@ -288,6 +288,23 @@ class OptimizeNLP():
             freqlists.append(freqlist)
         return wordlists, freqlists
 
+    def ma(self, seriesarray, windowsize):
+        """ Function for moving average filter
+            Arguments:
+                seriesarray - array of float (input array)
+                windowsize - int
+            Returns: array with MA filter applied"""
+        
+        returnarray = None
+        for series in seriesarray:
+            seriessum = np.cumsum(series)
+            mas = (seriessum[windowsize:] - seriessum[:-windowsize]) / windowsize
+            if returnarray is None:
+                returnarray = mas
+            else:
+                returnarray = np.vstack((returnarray, mas))
+        return returnarray
+
     def pickle_all(self, code="*", **kwargs):
         """ Function to pickle list of objects. Combines all optional arguments to dict which 
             is then pickled and saved.
@@ -324,6 +341,13 @@ class OptimizeNLP():
         lda_topic_shares = lda_topic_shares.T
         #print(lda_topic_shares[:5], '\n', len(lda_topic_shares))
         
+        """ Apply moving average filter by time for visualization"""
+        windowsize_ma = 100
+        lda_topic_shares_ma = self.ma(lda_topic_shares, windowsize_ma)
+        pdtma_start = np.int64(windowsize_ma / 2)
+        pdtma_end = len(pydatetimes) - windowsize_ma + pdtma_start
+        pydatetimes_ma = pydatetimes[pdtma_start:pdtma_end]
+
         """ Pickle results"""
         self.pickle_all(code=code, lda_topic_shares=lda_topic_shares, lda_topic_shares_ma=lda_topic_shares_ma, pydatetimes=pydatetimes, \
                    pydatetimes_ma=pydatetimes_ma, vectorizer=vectorizer, lda_model=lda_model, \
