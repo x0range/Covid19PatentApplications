@@ -170,7 +170,7 @@ class OptimizeNLP():
                     - Best LDA model (as evaluated by grid search) 
                     - Grid search CV results"""
         """ Fix python print function that cannot handle utf-8"""
-        utf8stdout = open(1, 'w', encoding='utf-8', closefd=False)
+        #utf8stdout = open(1, 'w', encoding='utf-8', closefd=False)
         #print(data[:5], file=utf8stdout)
         
         """ Stem corpus"""
@@ -180,42 +180,14 @@ class OptimizeNLP():
         
         
         """ Vectorize corpus, Create initial bag of words"""
-        if False:
-            # Count vectorizer code without ngrams
-            vectorizer = CountVectorizer(min_df=5, max_df=0.9, stop_words='english', lowercase=True, token_pattern='[a-zA-Z\-][a-zA-Z\-]{2,}')
-            data_vectorized = vectorizer.fit_transform(data)
-            
-            tfidf_transformer=TfidfTransformer(smooth_idf=True,use_idf=True)
-            tfidf_transformer.fit(data_vectorized)
-            tfidf_transformer_vectors = tfidf_transformer.transform(vectorizer.transform(data))
-            tfidf_vectorizer = TfidfVectorizer(use_idf=True, min_df=5, max_df=0.9, stop_words='english', lowercase=True, token_pattern='[a-zA-Z\-][a-zA-Z\-]{2,}',)
-            tfidf_vectorizer_vectors = tfidf_vectorizer.fit_transform(data)
-            
-            """ Whith these parameters, tfidf_transformer_vectors is the same as tfidf_vectorizer_vectors. Check as follows
-            
-            first_vector_tfidfvectorizer=tfidf_vectorizer_vectors[0]
-            df_t = pd.DataFrame(first_vector_tfidfvectorizer.T.todense(), index=tfidf_vectorizer.get_feature_names(), columns=["tfidf"])
-            df_t.sort_values(by=["tfidf"],ascending=False)
-            first_vector_count=data_vectorized[0]
-            df_c = pd.DataFrame(first_vector_count.T.todense(), index=vectorizer.get_feature_names(), columns=["count"])
-            df_c.sort_values(by=["count"],ascending=False)
-            first_vector_ct=tfidf_transformer_vectors[0]
-            df_ct = pd.DataFrame(first_vector_ct.T.todense(), index=vectorizer.get_feature_names(), columns=["count"])
-            df_ct.sort_values(by=["count"],ascending=False)
+        # tfidf code with ngrams
+        vectorizer = TfidfVectorizer(use_idf=True, min_df=10, max_df=self.TOPIC_WORD_THRESHOLD, 
+                                           stop_words='english', lowercase=True, 
+                                           token_pattern='[a-zA-Z\-][a-zA-Z\-]{2,}',
+                                           ngram_range=(1, 3),
+                                          )
+        data_vectorized = vectorizer.fit_transform(data)
 
-            """
-        
-        if True:
-            # tfidf code with ngrams
-            vectorizer = TfidfVectorizer(use_idf=True, min_df=10, max_df=self.TOPIC_WORD_THRESHOLD, 
-                                               stop_words='english', lowercase=True, 
-                                               token_pattern='[a-zA-Z\-][a-zA-Z\-]{2,}',
-                                               ngram_range=(1, 3),
-                                              )
-            data_vectorized = vectorizer.fit_transform(data)
-
-            #pdb.set_trace()
-        
         """ Compute word frequencies"""
         words_freq = []
         for current_word, _ in vectorizer.vocabulary_.items():
@@ -223,26 +195,8 @@ class OptimizeNLP():
             freq = abs_freq / float(len(data))
             words_freq.append((current_word, freq, abs_freq))
         
-        print([(word, freq) for word, freq, abs_freq in words_freq if (freq > 0.1)])
+        #print([(word, freq) for word, freq, abs_freq in words_freq if (freq > 0.1)])
         
-        if False:
-            # Fitting it again is superfluous
-            """ Remove topic words"""
-            #THRESHOLD = 0.2
-            reduced_vocabulary = [word for word, freq, abs_freq in words_freq if (freq < self.TOPIC_WORD_THRESHOLD) and (abs_freq > 1)]
-            print("Removed frequent words: {0:s}".format(str([word for word, freq, abs_freq in words_freq if freq >= self.TOPIC_WORD_THRESHOLD])))
-            print("Removed infrequent words: {0:s}".format(str([word for word, freq, abs_freq in words_freq if abs_freq <= 1])))
-            
-            """ Redo vectorization for reduced dictionary"""
-            vectorizer = CountVectorizer(min_df=5, max_df=0.9, stop_words='english', vocabulary=reduced_vocabulary, lowercase=True, token_pattern='[a-zA-Z\-][a-zA-Z\-]{2,}')
-            data_vectorized = vectorizer.fit_transform(data)
-        
-        """ Define search parameters"""     # should be done in constructir
-        #if self.search_params is None:
-        #    #self.search_params = {'n_components': [3, 5, 10, 15, 20], 'learning_decay': [.5, .7, .9]}
-        #    #self.search_params = {'n_components': [4, 6, 10, 16], 'learning_decay': [.5, .7, .9], 'learning_offset': [5., 10., 20.]}
-        #    self.search_params = {'n_components': [2,3,4,5,6,7,8,9,10]}#, 'learning_decay': [.5, .7, .9], 'learning_offset': [5., 10., 20.]}
-
         """ Initialize the model"""
         if score_function == 'perplexity':
             lda = LDACustomScore(max_iter=self.MAX_ITER)
@@ -263,7 +217,6 @@ class OptimizeNLP():
         print("Best Log Likelihood Score: ", gv_model.best_score_)
         print("Model Perplexity: ", lda_model.perplexity(data_vectorized))
         print("Grid CV Results", gv_model.cv_results_)
-        #pdb.set_trace()    
         
         return vectorizer, lda_model, gv_model.cv_results_
 
