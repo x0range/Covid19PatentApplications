@@ -305,6 +305,79 @@ class OptimizeNLP():
                 returnarray = np.vstack((returnarray, mas))
         return returnarray
 
+    def plot_topics(self, pydatetimes, lda_topic_shares, wl, lda_topic_shares_ma=None, pydatetimes_ma=None, code=""):
+        """ Function to visualize and save topic shares vs. time.
+            Arguments:
+                pydatetimes - list of DateTime objects (dates of documents for time axis)
+                lda_topic_shares - list of list of float (shares of topics per document)
+                wl - list of list of string (top words per topic)
+                lda_topic_shares_ma - list of list of float (shares of topics per document after filter (moving average))
+                pydatetimes_ma - list of DateTime objects (time axis for time series after applied filter)
+                code - string (code to be included in output filename)
+            Returns None.
+                """
+        
+        """ Prepare empty figure of shape corresponding to number of topics"""
+        ncol = 2
+        nrow = np.int64((self.top_n - 1) / ncol) + 1
+        fig, axs = plt.subplots(nrow, ncol, 
+                                figsize=(15, 6), 
+                                facecolor='w', edgecolor='k')
+        axs = axs.ravel()
+        
+        """ Prepare code string output filenames"""
+        if isinstance(code, list):
+            code = "_".join(code)
+        code = code.replace("*", "").replace(os.sep, "").replace(".", "_")
+        
+        """ Plot each topic"""
+        for i in range(self.top_n):
+            #pdb.set_trace()
+            axs[i].set_xlim([pydatetimes_ma[0], datetime.datetime(2018, 8, 31, 0, 0)])
+            axs[i].plot_date(pydatetimes, lda_topic_shares[i], marker='.')
+            if lda_topic_shares_ma is not None:
+                axs[i].plot_date(pydatetimes_ma, lda_topic_shares_ma[i], 'c-')
+            if not i > self.top_n - 1 - ncol:
+                axs[i].get_xaxis().set_visible(False)
+        fig.tight_layout()
+        fig.savefig('lda_topics_detail_' + code + '.pdf')
+        
+        if lda_topic_shares_ma is not None:
+            """ Set up second empty figure for MA plot and topic words"""
+            fig1, axs1 = plt.subplots(nrow, ncol, 
+                                    figsize=(15, 6), 
+                                    facecolor='w', edgecolor='k')
+            axs1 = axs1.ravel()
+            
+            axis_lim = {"xmax": [], "xmin": [], "ymax": [], "ymin": []}
+            
+            """ Plot each topic"""
+            for i in range(self.top_n):
+                axs1[i].plot_date(pydatetimes_ma, lda_topic_shares_ma[i], 'b-')
+                xmin, xmax = axs1[i].get_xlim()
+                ymin, ymax = axs1[i].get_ylim()
+                axis_lim["xmax"].append(xmax)
+                axis_lim["xmin"].append(xmin)
+                axis_lim["ymax"].append(ymax)
+                axis_lim["ymin"].append(ymin)
+
+            """ Obtain common axis limits"""
+            xmax = max(axis_lim["xmax"])
+            xmin = min(axis_lim["xmin"])
+            ymax = max(axis_lim["ymax"])
+            ymin = min(axis_lim["ymin"])
+            
+            for i in range(self.top_n):
+                """ Apply axis limits"""
+                axs1[i].set_xlim(xmin, xmax)
+                axs1[i].set_ylim(ymin, ymax)
+                """ Add topic words to bottom of each graph"""
+                axs1[i].text(0.98*xmin + 0.02*xmax, 0.9*ymin + 0.1*ymax, wl[i], bbox={'facecolor':'blue', 'alpha':0.1, 'pad':1})
+                if not i > self.top_n - 1 - ncol:
+                    axs1[i].get_xaxis().set_visible(False)
+            fig1.tight_layout()
+            fig1.savefig('lda_topics_ma_' + code + '.pdf')
+
     def pickle_all(self, code="*", **kwargs):
         """ Function to pickle list of objects. Combines all optional arguments to dict which 
             is then pickled and saved.
@@ -354,7 +427,7 @@ class OptimizeNLP():
                    wl=wl, document_ids=document_ids, grid_cv_results=grid_cv_results)
         
         """ Visualize"""
-        # TODO
+        self.plot_topics(pydatetimes, lda_topic_shares, wl, lda_topic_shares_ma, pydatetimes_ma, code=code)
 
 """ Main entry point"""
 
