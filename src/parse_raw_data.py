@@ -62,11 +62,14 @@ def main():
     """ Obtain filenames"""
     files = get_downloaded_zip_files()
     
-    """ Parse"""
+    """ Parse and save"""
     for file_name in tqdm(files):
         lines = extract(file_name)
         patents = parse_xml(lines, file_name, start_date, end_date)
         df = pd.DataFrame.from_records(patents)
+        if len(df) == 0:
+            df = pd.DataFrame(columns=['application_id', 'abstract', 'title', 'description', 'claims', 
+                                       'publication_date', 'application_date', 'country'])
         file_name_without_path = file_name.split(os.sep)[-1]
         df.to_pickle(os.path.join(DATA_DIR, 'processed', file_name_without_path + '_patents.pkl.gz'), compression="gzip")
 
