@@ -14,8 +14,10 @@ from sklearn.decomposition import LatentDirichletAllocation, TruncatedSVD
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
 from sklearn.model_selection import GridSearchCV
 import os
+import argparse
 #import nltk 
 import psutil
+import resource
 import pdb
 import pickle
 import datetime
@@ -393,6 +395,22 @@ class OptimizeNLP():
 """ Main entry point"""
 
 if __name__ == "__main__":
+    
+    """ Handle arguments"""
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-m",
+                        "--memory",
+                        help="Maximum memory size that can be used in GB",
+                        type=float,
+                        required=False)
+    args = parser.parse_args()
+    
+    if args.memory:
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        resource.setrlimit(resource.RLIMIT_AS, (int(args.memory * 1024**3), hard))
+    
+    """ Setup and run NLP"""
     codes = ["*.pkl.gz"]
     for code in codes:
         ONLP = OptimizeNLP(code, path_prefix="../data/processed", n_topics=12)
