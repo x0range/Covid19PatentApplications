@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, T
 from sklearn.model_selection import GridSearchCV
 import os
 #import nltk 
+import psutil
 import pdb
 import pickle
 import datetime
@@ -110,6 +111,8 @@ class OptimizeNLP():
                     df = df_new_entries
                 else:
                     df = pd.concat([df, df_new_entries])
+                process = psutil.Process(os.getpid())
+                print("Read {0:s} Corpus size: {1:7d} Memory usage: {2:8f} MB".format(filename, len(df), process.memory_info().rss/(1024**2)))
         
         """ Transform dates to standard format"""
         df["application_date"] = pd.to_datetime(df["application_date"], format="%Y%m%d")
