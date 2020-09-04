@@ -112,3 +112,38 @@ def get_city(soup: BeautifulSoup, file_name: str, application_id: str):
         logging.error(f'Could not extract city from {application_id} in {file_name}: {e}.')
     return city
 
+def get_classification(soup: BeautifulSoup, file_name: str, application_id: str):
+    """ Function for extracting CPC classification codes from xml soup
+        @returns CPC classification codes as list of list (outer list for the different CPC classification codes,
+                                                           inner lists for levels in order: ["section", "class", 
+                                                           "subclass", "main-group", "subgroup", "symbol-position", 
+                                                           "classification-value"])"""
+    """ Define CPC level tags to be extracted for each classification string"""
+    cpc_levels = ["section", "class", "subclass", "main-group", "subgroup", "symbol-position", "classification-value"]
+    
+    """ Attempt to find CPC record"""
+    try:
+        CPC_tag = soup.find("us-patent-application").find("classifications-cpc")
+        CPC_soup = CPC_tag.find_all("classification-cpc")
+    except Exception as e:
+        CPC_soup = []
+        logging.error(f'Could not extract CPC classification codes from {application_id} in {file_name}: {e}.')
+    
+    """ Parse CPC record"""
+    CPC_record = []
+    for cs in CPC_soup:
+        """ Parse individual classification string in CPC record"""
+        CPC_record.append([])
+        for cpc_level in cpc_levels:
+            """ Parse individual CPC level tag in classification string in CPC record"""
+            try:
+                result = cs.find(cpc_level)
+                if result is not None:
+                    result = result.text
+            except:
+                result = None
+                logging.error(f'Could not find tag for {cpc_level} in CPC classification code in {application_id} in {file_name}: {e}.')
+            CPC_record[-1].append(result)    
+    
+    return CPC_record
+
