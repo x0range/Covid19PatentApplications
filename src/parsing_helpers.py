@@ -91,3 +91,24 @@ def get_country(soup: BeautifulSoup, file_name: str, application_id: str):
         country = None
         logging.error(f'Could not extract country from {application_id} in {file_name}: {e}.')
     return country
+
+def get_state(soup: BeautifulSoup, file_name: str, application_id: str):
+    """Function for extracting assignee (US) state from xml soup"""
+    try:
+        state = soup.find("us-patent-application").find("us-parties").find("us-applicant").find("address").find(
+            "state").text
+    except Exception as e:
+        state = None
+        logging.error(f'Could not extract state from {application_id} in {file_name}: {e}.')
+    return state
+
+def get_city(soup: BeautifulSoup, file_name: str, application_id: str):
+    """Function for extracting assignee city from xml soup"""
+    try:
+        city = soup.find("us-patent-application").find("us-parties").find("us-applicant").find("address").find(
+            "city").text
+    except Exception as e:
+        city = None
+        logging.error(f'Could not extract city from {application_id} in {file_name}: {e}.')
+    return city
+
