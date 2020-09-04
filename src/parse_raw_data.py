@@ -10,11 +10,10 @@ import pandas as pd
 from zipfile import ZipFile
 from bs4 import BeautifulSoup
 from parsing_helpers import get_application_id, get_abstract, get_title, get_description, get_claims, \
-    get_publication_date, get_application_date, get_country
+    get_publication_date, get_application_date, get_country, get_state, get_city, get_classification
 from tqdm import tqdm
 from settings import DATA_DIR
 import utils
-
 
 def main():
     
@@ -69,7 +68,8 @@ def main():
         df = pd.DataFrame.from_records(patents)
         if len(df) == 0:
             df = pd.DataFrame(columns=['application_id', 'abstract', 'title', 'description', 'claims', 
-                                       'publication_date', 'application_date', 'country'])
+                                       'publication_date', 'application_date', 'country', 'state', 'city', 
+                                       'CPC_codes'])
         file_name_without_path = file_name.split(os.sep)[-1]
         df.to_pickle(os.path.join(DATA_DIR, 'processed', file_name_without_path + '_patents.pkl.gz'), compression="gzip")
 
@@ -143,6 +143,9 @@ def parse_single_patent(xml_block: str, file_name: str, start_date: str, end_dat
         patent['publication_date'] = get_publication_date(soup, file_name, patent['application_id'])
         patent['application_date'] = get_application_date(soup, file_name, patent['application_id'])
         patent['country'] = get_country(soup, file_name, patent['application_id'])
+        patent['state'] = get_state(soup, file_name, patent['application_id'])
+        patent['city'] = get_city(soup, file_name, patent['application_id'])
+        patent['CPC_codes'] = get_classification(soup, file_name, patent['application_id'])
         
         if end_date is not None and \
                 pd.to_datetime(patent["application_date"], format="%Y%m%d") > pd.to_datetime(end_date):
@@ -150,7 +153,7 @@ def parse_single_patent(xml_block: str, file_name: str, start_date: str, end_dat
         if (start_date is not None) and (patent.get("application_date") is not None) and \
                 pd.to_datetime(patent["application_date"], format="%Y%m%d") < pd.to_datetime(start_date):
             patent = {'application_id': None}
-
+        
     return patent
 
 
