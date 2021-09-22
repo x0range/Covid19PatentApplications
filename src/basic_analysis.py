@@ -83,7 +83,12 @@ def main(output_directory=OUTPUT_DIR, maximum_age=None):
 		print("\rLoaded {0:s} of size {1:.2f} MB, reduced to {2:.2f} MB. Total df size now: {3:.2f} MB".format(
 							filename, current_file_total_size/2**20, current_file_net_size/2**20, df_total_size/2**20))
 	
-	pdb.set_trace()	
+	""" Filter by age"""
+	if maximum_age is not None:
+		df["age_at_publication"] = df.apply(lambda row: (pd.to_datetime(row['publication_date']) - pd.to_datetime(row['application_date'])).days, axis=1)
+		df = df[df["age_at_publication"] <= maximum_age]
+	
+	#pdb.set_trace()	
 	#ids = df["application_id"]
 	#duplicates = df[ids.isin(ids[ids.duplicated()])].sort_values("application_id")
 	
@@ -173,3 +178,4 @@ def main(output_directory=OUTPUT_DIR, maximum_age=None):
 
 if __name__ == '__main__':
     main()
+	main(maximum_age=366)
