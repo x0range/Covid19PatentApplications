@@ -23,7 +23,7 @@ def create_plot(df_plot, plot_column, output_directory, maximum_age):
         @param df_plot: pandas dataframe with the data in wide format (Day of the year vs Year)
         @param plot_column: Category that is currently being plotted
         @param output_directory: Where plots are saved
-        @maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
+        @param maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
                                     This is for making P.A.s filed at different times comparable
     """
     df_plot["Day"] = df_plot.index
@@ -57,10 +57,38 @@ def find_code_in_PA(pa_codes, code_of_interest):
         pa_codes_idx += 1
     return code_present
 
+def urban_city_names(minimum_urban_city_size):
+    """Function for obtaining a list of names of cities with population size above a threshold
+       in various spellings
+       @param minimum_urban_city_size (int) - size threshold
+       
+       @return (list of string) - Names
+       """
+    
+    """ Load CSV file from here:
+    https://public.opendatasoft.com/explore/dataset/geonames-all-cities-with-a-population-1000/export/?disjunctive.cou_name_en&sort=name
+    """
+    dfurban = pd.read_csv("geonames-all-cities-with-a-population-1000.csv", sep=";")
+    
+    """ Explode df to account for every spelling"""
+    dfurban["AltNames"] = dfurban.apply(lambda row: row["Alternate Names"].split(",") if isinstance(row["Alternate Names"], str) else [], axis=1)
+    #dfurban[dfurban["ASCII Name"]=="Suwon"].iloc[0][["AltNames"]][0]
+    dfurban2 = dfurban.explode("AltNames")
+    dfurban2["Name"] = dfurban2["AltNames"]
+    dfurban2 = dfurban.append(dfurban2)
+    
+    """ Filter by minimum size"""
+    dfurban_redux = dfurban2[dfurban2["Population"] > minimum_urban_city_size]
+    
+    """ Extract list"""
+    urban_names = list(dfurban_redux["Name"])
+    
+    return urban_names
+
 def main(output_directory=OUTPUT_DIR, maximum_age=None):
     """Function...
         @param output_directory: Where plots and computed data are saved
-        @maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
+        @param maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
                                     This is for making P.A.s filed at different times comparable
     """
     
@@ -88,9 +116,22 @@ def main(output_directory=OUTPUT_DIR, maximum_age=None):
         df["age_at_publication"] = df.apply(lambda row: (pd.to_datetime(row['publication_date']) - pd.to_datetime(row['application_date'])).days, axis=1)
         df = df[df["age_at_publication"] <= maximum_age]
     
+    
     #pdb.set_trace()    
     #ids = df["application_id"]
     #duplicates = df[ids.isin(ids[ids.duplicated()])].sort_values("application_id")
+    
+    """ Identify urban and rural applicant locations"""
+    urban_names = urban_city_names(minimum_urban_city_size=100000)
+    df["urban"] = df.apply(lambda row: True if row["city"] in urban_names else False, axis=1)
+    df["rural"] = ~df["urban"]
+    urbanness_columns = ["urban", "rural"]
+    
+    """ Identify countries"""
+    country_IDs = ["US", "DE", "JP", "CN", "IT", "FR", "KR", "TW", "GB", "CA", "CH", "NL", "SE", "IL"]
+    country_columns = ["Country_" + cid for cid in country_IDs]
+    for i, cid in enumerate(country_IDs):
+        df[country_columns[i]] = df["country"] == cid
     
     """ Identify main groups """
     """for each CPC code idx 0 is main group. E.g.: 
@@ -127,7 +168,7 @@ def main(output_directory=OUTPUT_DIR, maximum_age=None):
     for MG in ["A", "B", "C", "D", "E", "F", "G", "H", "Y"]:
         keep_columns.append('CPC_MG_' + MG)
         #df1 = df[['CPC_MG_' + MG]]
-    keep_columns += codes_of_interest_column_names
+    keep_columns += codes_of_interest_column_names + urbanness_columns + country_columns
     df1 = df[keep_columns]
     df1["all"] = np.ones(len(df1))
 
@@ -146,7 +187,7 @@ def main(output_directory=OUTPUT_DIR, maximum_age=None):
     df_plots = {}
     plot_columns = ['all', 'CPC_MG_A', 'CPC_MG_B', 'CPC_MG_C', 'CPC_MG_D', 'CPC_MG_E', 'CPC_MG_F', 
                                                 'CPC_MG_G', 'CPC_MG_H', 'CPC_MG_Y']
-    plot_columns += codes_of_interest_column_names
+    plot_columns += codes_of_interest_column_names + urbanness_columns + country_columns
     
     for plot_column in plot_columns:
         """ Apply MA filter before pivot to wide format"""
