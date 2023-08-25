@@ -17,7 +17,7 @@ def get_processed_files(directory=os.path.join(DATA_DIR, 'processed')):
     """
     return glob.glob(os.path.join(directory, '*.zip_patents.pkl.gz'))
 
-def create_plot(df_plot, plot_column, output_directory, maximum_age):
+def create_plot(df_plot, plot_column, output_directory, maximum_age, ylims=None):
     """ Function for creating plot of the number of patent applications in a certain category 
         (e.g. all or certain main groups).
         @param df_plot: pandas dataframe with the data in wide format (Day of the year vs Year)
@@ -25,26 +25,32 @@ def create_plot(df_plot, plot_column, output_directory, maximum_age):
         @param output_directory: Where plots are saved
         @param maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
                                     This is for making P.A.s filed at different times comparable
+        @param ylims (tuple or len-2 list of numeric or None): y-axis limits
     """
     df_plot["Day"] = df_plot.index
     df_plot.loc[df_plot.index!=366] = df_plot.loc[df_plot.index!=366].fillna(0)
     
     fig, ax = plt.subplots(nrows=1, ncols=1, squeeze=False)
+    ax[0][0].plot(df_plot["Day"], df_plot[2014], linewidth=0.8, color="#aaaaff", label="2014")
     ax[0][0].plot(df_plot["Day"], df_plot[2015], linewidth=0.8, color="#7777ff", label="2015")
     ax[0][0].plot(df_plot["Day"], df_plot[2016], linewidth=0.8, color="#3333ff", label="2016")
     ax[0][0].plot(df_plot["Day"], df_plot[2017], linewidth=0.8, color="#0000ff", label="2017")
     ax[0][0].plot(df_plot["Day"], df_plot[2018], linewidth=0.8, color="#0000aa", label="2018")
     ax[0][0].plot(df_plot["Day"], df_plot[2019], linewidth=0.8, color="#000077", label="2019")
     ax[0][0].plot(df_plot["Day"], df_plot[2020], linewidth=1.5, color="#ff0000", label="2020")
-    ax[0][0].plot(df_plot["Day"], df_plot[2021], linewidth=1.5, color="#aa0000", label="2021")
+    #ax[0][0].plot(df_plot["Day"], df_plot[2021], linewidth=1.5, color="#aa0000", label="2021")
     ax[0][0].legend(loc='best')
     ax[0][0].set_ylabel("# Patent applications")
     ax[0][0].set_xlim(1, 366)
+    if ylims is not None:
+        ymin, ymax = ylims
+        ax[0][0].set_ylim(ymin, ymax)
     ax[0][0].xaxis.set_ticks([1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335])
     ax[0][0].set_xticklabels(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_directory, "patent_applications_" + plot_column + '_maximum_age_' + str(maximum_age) + ".pdf"))
+    print("Saved as", (os.path.join(output_directory, "patent_applications_" + plot_column + '_maximum_age_' + str(maximum_age) + ".pdf")))
     #plt.show()
 
 
@@ -217,6 +223,92 @@ def main(output_directory=OUTPUT_DIR, maximum_age=None):
     with gzip.open(os.path.join(output_directory, 'patent_applications_plotting_dfs_as_list_maximum_age_' + str(maximum_age) + '.pkl.gz'), "rb") as rfile:
         df_plots = pickle.load(rfile)
 
+def replot(output_directory=OUTPUT_DIR, maximum_age=None):
+    """Function...
+        @param output_directory: Where plots and computed data are saved
+        @param maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
+                                    This is for making P.A.s filed at different times comparable
+    """
+    """ Reload"""
+    df = pd.read_pickle(os.path.join(output_directory, 'df_patent_applications_merged_wo_description_maximum_age_' + str(maximum_age) + '.pkl.gz'), compression="gzip")
+    df_counts = pd.read_pickle(os.path.join(output_directory, 'df_number_patent_applications_by_MG_maximum_age_' + str(maximum_age) + '.pkl.gz'), compression="gzip")
+    with gzip.open(os.path.join(output_directory, 'patent_applications_plotting_dfs_as_list_maximum_age_' + str(maximum_age) + '.pkl.gz'), "rb") as rfile:
+        df_plots = pickle.load(rfile)
+
+    plot_columns = ['all', 'CPC_MG_A', 'CPC_MG_B', 'CPC_MG_C', 'CPC_MG_D', 'CPC_MG_E', 'CPC_MG_F', 
+                                                'CPC_MG_G', 'CPC_MG_H', 'CPC_MG_Y']
+    #plot_columns += codes_of_interest_column_names + urbanness_columns + country_columns
+
+    for plot_column in plot_columns:
+        """ Extract plotting data"""
+        df_plot = df_plots[plot_column]
+        
+        """ Plot"""
+        create_plot(df_plot, plot_column, output_directory, maximum_age)
+
+def new_plot(output_directory=OUTPUT_DIR, maximum_age=None):
+    """Function...
+        @param output_directory: Where plots and computed data are saved
+        @param maximum_age (int or None): maximum age beyond which patent applications are filtered out. 
+                                    This is for making P.A.s filed at different times comparable
+    """
+    """ Reload"""
+    df = pd.read_pickle(os.path.join(DATA_DIR, 'work', 'df_Covid-19_all_terms_subclasses.pkl.gz'), compression="gzip")
+    #df_counts = pd.read_pickle(os.path.join(output_directory, 'df_number_patent_applications_by_MG_maximum_age_' + str(maximum_age) + '.pkl.gz'), compression="gzip")
+    #with gzip.open(os.path.join(output_directory, 'patent_applications_plotting_dfs_as_list_maximum_age_' + str(maximum_age) + '.pkl.gz'), "rb") as rfile:
+    #    df_plots = pickle.load(rfile)
+    rSstart = pd.to_datetime("2014-01-01")
+    rSend = pd.to_datetime("2021-03-31")
+    pdb.set_trace()
+    df = df[(df["age_at_publication"]<=maximum_age) & (df["Date"]>=rSstart) & (df["Date"]<=rSend)]
+    
+    df["Year"] = df.apply(lambda row: row["Date"].year, axis=1)
+    df["Day"] = df.apply(lambda row: (row["Date"] - pd.to_datetime(row["Date"].year, format="%Y")).days + 1, axis=1)
+    
+    #df['CPC_MGs'] = df.apply(lambda row: [CC[0] for CC in row["CPC_codes"]], axis=1)
+    #for MG in ["A", "B", "C", "D", "E", "F", "G", "H", "Y"]:
+    #    df['CPC_MG_' + MG] = df.apply(lambda row: True if MG in row["CPC_MGs"] else False, axis=1)
+
+    df = df[["ID","Classification_share","Year","Day"]].groupby(["ID","Year","Day"]).agg("sum").reset_index()
+    df = df[["Classification_share","Year","Day"]].groupby(["Year","Day"]).agg("sum").reset_index()
+    df['all'] = df['Classification_share']
+    
+    df.sort_values(by=['Year', 'Day'], inplace=True, ascending=False)
+    
+    #plot_columns = ['all', 'CPC_MG_A', 'CPC_MG_B', 'CPC_MG_C', 'CPC_MG_D', 'CPC_MG_E', 'CPC_MG_F', 
+    #                                            'CPC_MG_G', 'CPC_MG_H', 'CPC_MG_Y']
+    #plot_columns += codes_of_interest_column_names + urbanness_columns + country_columns
+    df_plots = {}
+    plot_columns = ['all']
+    for plot_column in plot_columns:
+        """ Apply MA filter before pivot to wide format"""
+        df[plot_column + '_MA'] = df[plot_column].rolling(window=7).mean()
+        
+        pdb.set_trace()
+        """ Transform to wide format for current variable (day of year vs year)"""
+        df_plot = df.pivot(index='Day', columns='Year', values=plot_column+'_MA')
+        
+        """ Plot"""
+        ylims = [400, 1400] if plot_column=='all' else None
+        create_plot(df_plot, plot_column, output_directory, maximum_age, ylims=ylims)
+        
+        """ Save plotting data"""
+        df_plots[plot_column] = df_plot
+        
+        """ Restore original df_counts"""
+        df.drop(plot_column + '_MA', axis=1, inplace=True)
+
+    #for plot_column in plot_columns:
+    #    """ Extract plotting data"""
+    #    df_plot = df_plots[plot_column]
+    #    
+    #    """ Plot"""
+    #    create_plot(df_plot, plot_column, output_directory, maximum_age)
+
+
 if __name__ == '__main__':
-    main()
-    main(maximum_age=366)
+    #main()
+    #main(maximum_age=366)
+    #main(maximum_age=584)
+    #replot(maximum_age=584)
+    new_plot(maximum_age=555)
